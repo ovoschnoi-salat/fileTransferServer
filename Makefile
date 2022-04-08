@@ -21,4 +21,7 @@ $(BUILDDIR)/$(SERVERDIR)/main.o: $(SERVERDIR)/main.c
 	$(CC) -c $(CFLAGS) $< -o $@
 
 clean:
-	rm -rf $(BUILDDIR) client server
+	rm -rf $(BUILDDIR)
+
+clean-all: clean
+	rm -rf client server

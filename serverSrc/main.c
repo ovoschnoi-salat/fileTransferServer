@@ -7,12 +7,19 @@
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
+#include <sys/stat.h>
+#include <sys/signal.h>
 
 pthread_mutex_t fileWriteLock;
 pthread_mutex_t fileCreationLock;
 FILE *logFile;
 char outputPath[256], logFileName[] = "file_accepting_server.log";
 size_t outputPathLen;
+int serverSocket;
+
+void interruptHandler(){
+	close(serverSocket);
+}
 
 void writeToLog(int socket, const char *msg) {
 	time_t now;
@@ -117,13 +124,14 @@ int main(int argc, char const *argv[]) {
 		if ((outputPathLen = strlen(pathArg)) > 255)
 			goto invalidArgs;
 		strcpy(outputPath, pathArg);
-		if (outputPath[outputPathLen - 1] != '/')
+		if (outputPath[outputPathLen - 1] != '/') {
 			outputPath[outputPathLen++] = '/';
 			outputPath[outputPathLen] = '\0';
+		}
+		mkdir(outputPath, S_IRWXU);
 	}
 
 	// initializing socket
-	int serverSocket;
 	struct sockaddr_in server;
 	server.sin_family = AF_INET;
 	server.sin_addr.s_addr = INADDR_ANY;
@@ -166,9 +174,11 @@ int main(int argc, char const *argv[]) {
 		return 1;
 	}
 	printf("Server started successfully\n");
+	signal(SIGINT, interruptHandler);
+	signal(SIGTERM, interruptHandler);
 	// starting accepting new connections
 	int newSocket, *clientSocket;
-	while ((newSocket = accept(serverSocket, NULL, NULL)) != 1) {
+	while ((newSocket = accept(serverSocket, NULL, NULL)) != -1) {
 		clientSocket = malloc(1);
 		*clientSocket = newSocket;
 		pthread_t thread;
@@ -184,6 +194,6 @@ int main(int argc, char const *argv[]) {
 	pthread_mutex_destroy(&fileCreationLock);
 	pthread_mutex_destroy(&fileWriteLock);
 	fclose(logFile);
-	close(serverSocket);
+	printf("Server stopped\n");
 	return 0;
 }
