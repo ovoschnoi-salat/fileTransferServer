@@ -22,10 +22,13 @@ void interruptHandler(){
 }
 
 void writeToLog(int socket, const char *msg) {
-	time_t now;
-	time(&now);
+	char timeStr[20];
+	time_t current_time = time(NULL);
+	struct tm tm = *localtime(&current_time);
+	strftime(timeStr, sizeof timeStr, "%d/%m/%Y %H:%M:%S", &tm);
+
 	pthread_mutex_lock(&fileWriteLock);
-	fprintf(logFile, "[%s] message from %i socket's handler: %s\n", ctime(&now), socket, msg);
+	fprintf(logFile, "[%s] %i socket's handler: %s\n", timeStr, socket, msg);
 	fflush(logFile);
 	pthread_mutex_unlock(&fileWriteLock);
 }
@@ -174,6 +177,7 @@ int main(int argc, char const *argv[]) {
 		return 1;
 	}
 	printf("Server started successfully\n");
+	writeToLog(serverSocket, "Server started successfully");
 	signal(SIGINT, interruptHandler);
 	signal(SIGTERM, interruptHandler);
 	// starting accepting new connections
@@ -194,6 +198,7 @@ int main(int argc, char const *argv[]) {
 	pthread_mutex_destroy(&fileCreationLock);
 	pthread_mutex_destroy(&fileWriteLock);
 	fclose(logFile);
-	printf("Server stopped\n");
+	printf("\nServer stopped\n");
+	writeToLog(serverSocket, "Server stopped successfully");
 	return 0;
 }
